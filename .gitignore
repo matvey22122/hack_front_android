@@ -54,10 +54,3 @@ buck-out/
 
 # Bundle artifact
 *.jsbundle
-
-# CocoaPods
-/ios/Pods/
-
-# Project exclude paths
-/android/
-/ios/
