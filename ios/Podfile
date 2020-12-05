@@ -8,6 +8,8 @@ target 'hack_front_android' do
 
   use_react_native!(:path => config["reactNativePath"])
 
+  pod 'react-native-config', :path => '../node_modules/react-native-config'
+
   target 'hack_front_androidTests' do
     inherit! :complete
     # Pods for testing

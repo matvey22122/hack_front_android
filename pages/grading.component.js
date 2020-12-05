@@ -1,53 +1,150 @@
-import React, {useState} from 'react';
-import {SafeAreaView, StyleSheet, View, TextInput} from 'react-native';
+import React, {useState, useEffect, useContext} from 'react';
+import {
+  SafeAreaView,
+  StyleSheet,
+  View,
+  BackHandler,
+  Alert,
+} from 'react-native';
 import {
   Divider,
-  Icon,
   Layout,
   Text,
-  TopNavigation,
-  TopNavigationAction,
   Modal,
   Button,
   Card,
 } from '@ui-kitten/components';
+import io from 'socket.io-client';
+import {API_URL} from '@env';
+import {ApiContext} from '../context/ApiContext';
+import TextInputMask from 'react-native-text-input-mask';
 
-const BackIcon = (props) => <Icon {...props} name="log-out-outline" />;
 
 export const GradingScreen = ({navigation}) => {
+  const {member, setMember, user, Logout, estimateMember} = useContext(
+    ApiContext,
+  );
+  const [score, setScore] = useState(0);
+  const [disableButton, setDisableButton] = useState(false);
+
+  useEffect(() => {
+    const socket = io(API_URL);
+    console.log(2)
+
+    socket.on('UpdateMember', (data) => {
+      setScore(0);
+      setDisableButton(false);
+      setMember(data);
+    });
+
+    socket.on('JudgeLogout', (data) => {
+      if (data.login === user.login) {
+        setScore(0);
+        setDisableButton(false);
+        Logout();
+        navigation.goBack();
+      }
+    });
+  });
+
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert(
+        'Вы нажали кнопку назад!',
+        'Вы уверены, что хотите выйти из учетной записи?',
+        [
+          {
+            text: 'Нет',
+            onPress: () => null,
+            style: 'cancel',
+          },
+          {
+            text: 'Да',
+            onPress: () => {
+              setScore(0);
+              setDisableButton(false);
+              Logout();
+              navigation.goBack();
+            },
+          },
+        ],
+      );
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   const [visible, setVisible] = useState(false);
 
   const logOut = () => {
+    setDisableButton(false);
     setVisible(false);
+    Logout();
     navigation.goBack();
   };
 
-  const BackAction = () => (
-    <TopNavigationAction icon={BackIcon} onPress={() => setVisible(true)} />
-  );
-
   return (
     <SafeAreaView style={{flex: 1}}>
-      <TopNavigation
-        title="Оценивание"
-        alignment="center"
-        accessoryRight={BackAction}
-      />
       <Divider />
-      <Layout
-        style={{
-          flex: 1,
-          flexDirection: 'column',
-        }}>
-        <View style={styles.metaInfo}>
-          <Text category="h5">Фамилия: Иванова</Text>
-          <Text category="h5">Имя: Анна</Text>
-          <Text category="h5">Отчество: Ивановна</Text>
+      {Object.keys(member).length === 0 ? (
+        <View
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: 20,
+          }}>
+          <Text category={'h1'}>Соревнование не идет</Text>
         </View>
-        <View style={styles.score}>
-          <TextInput />
-        </View>
-      </Layout>
+      ) : (
+        <Layout
+          style={{
+            flex: 1,
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}>
+          <View style={styles.metaInfo}>
+            <Text category="h5">Фамилия: {member.fio.split(' ')[0]}</Text>
+            <Text category="h5">Имя: {member.fio.split(' ')[1]}</Text>
+            <Text category="h5">Отчество: {member.fio.split(' ')[2]}</Text>
+            <Text category="h5">Дата рождения: {member.dateOfBirth}</Text>
+            <Text category="h5">Разряд: {member.rank}</Text>
+            <Text category="h5">Претендует на: {member.toRank}</Text>
+          </View>
+          <View style={styles.score}>
+            <Text category="h1" style={{marginBottom: 10}}>
+              Балл:
+            </Text>
+            <TextInputMask
+              style={styles.TextInputStyle}
+              placeholder="0"
+              keyboardType={'numeric'}
+              value={score}
+              onChangeText={(formatted, extracted) => {
+                setScore(+formatted);
+              }}
+              mask={'[99].[99]'}
+            />
+            <Button
+              disabled={disableButton}
+              size={'giant'}
+              onPress={() => {
+                setDisableButton(true);
+                estimateMember(score);
+              }}>
+              <Text category={'h1'} style={{color: '#fff'}}>
+                Оценить
+              </Text>
+            </Button>
+          </View>
+        </Layout>
+      )}
 
       <Modal
         visible={visible}
@@ -85,5 +182,22 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     margin: 20,
   },
-  score: {},
+  score: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  TextInputStyle: {
+    textAlign: 'center',
+    height: 200,
+    fontFamily: 'OpenSans-Bold',
+    fontWeight: '600',
+    width: 300,
+    fontSize: 100,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#b4c8ff',
+    marginBottom: 20,
+  },
 });

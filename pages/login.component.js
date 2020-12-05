@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useContext} from 'react';
 import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   Button,
@@ -7,16 +7,19 @@ import {
   TopNavigation,
   Input,
 } from '@ui-kitten/components';
+import {ApiContext} from '../context/ApiContext';
 
 export const LoginScreen = ({navigation}) => {
-  const [user, setUser] = useState({
-    login: '',
-    password: '',
-  });
+  const {Login, setUser, user} = useContext(ApiContext);
 
   const logIn = async () => {
-    //TODO: запрос на верность логина и пароля
-    navigation.navigate('Grading');
+    try {
+      if (await Login()) {
+        navigation.navigate('Grading');
+      }
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
@@ -52,6 +55,7 @@ export const LoginScreen = ({navigation}) => {
                 return newUser;
               })
             }
+            secureTextEntry={true}
           />
           <Button onPress={logIn}>Войти</Button>
         </Layout>
